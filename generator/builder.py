@@ -81,7 +81,10 @@ class Builder:
         self.snapshot_pages = []
         self.loaded_from_snapshot = False
         if not self.data:
-            self.snapshot_pages = SnapshotRouteLoader(self.output_dir).load()
+            self.snapshot_pages = SnapshotRouteLoader(
+                self.output_dir,
+                self.data_dir / "route_snapshot.txt",
+            ).load()
             self.loaded_from_snapshot = bool(self.snapshot_pages)
 
         self._print_build_paths()
@@ -575,11 +578,13 @@ class Builder:
 class SnapshotRouteLoader:
     SUBJECT_MARKERS = ("영어", "수학", "국어", "과학")
 
-    def __init__(self, output_dir):
+    def __init__(self, output_dir, snapshot_file=None):
         self.output_dir = Path(output_dir).resolve()
+        self.snapshot_file = Path(snapshot_file).resolve() if snapshot_file else None
 
     def load(self):
-        if not self.output_dir.exists():
+        snapshot_exists = self.snapshot_file and self.snapshot_file.exists()
+        if not self.output_dir.exists() and not snapshot_exists:
             return []
 
         route_parts = self._route_parts()
@@ -635,6 +640,21 @@ class SnapshotRouteLoader:
                 parts.add(())
             else:
                 parts.add(tuple(parent.parts))
+
+        if not parts and self.snapshot_file and self.snapshot_file.exists():
+            parts.update(self._route_parts_from_snapshot())
+
+        return parts
+
+    def _route_parts_from_snapshot(self):
+        parts = set()
+        for line in self.snapshot_file.read_text(encoding="utf-8-sig").splitlines():
+            route = line.strip()
+            if not route or route.startswith("#"):
+                continue
+
+            route = route.strip("/")
+            parts.add(tuple(route.split("/")) if route else ())
 
         return parts
 
