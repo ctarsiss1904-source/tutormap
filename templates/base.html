@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ page.meta.title }}</title>
+    <meta name="description" content="{{ page.meta.description }}">
+    <meta name="robots" content="{{ page.meta.robots }}">
+    <link rel="canonical" href="{{ page.meta.canonical }}">
+    <meta property="og:title" content="{{ page.meta.og_title }}">
+    <meta property="og:description" content="{{ page.meta.og_description }}">
+    <meta property="og:url" content="{{ page.meta.og_url }}">
+    <meta property="og:type" content="{{ page.meta.og_type }}">
+    <meta property="og:site_name" content="{{ page.meta.og_site_name }}">
+    <meta property="og:locale" content="{{ page.meta.og_locale }}">
+    <meta property="og:image" content="{{ page.meta.og_image }}">
+    <meta name="twitter:card" content="{{ page.meta.twitter_card }}">
+    <meta name="twitter:title" content="{{ page.meta.twitter_title }}">
+    <meta name="twitter:description" content="{{ page.meta.twitter_description }}">
+    <meta name="twitter:image" content="{{ page.meta.twitter_image }}">
+    {% if page.schema %}
+    {% for schema in page.schema %}
+    <script type="application/ld+json">
+        {{ schema | tojson }}
+    </script>
+    {% endfor %}
+    {% endif %}
+    <link rel="stylesheet" href="{{ css_href }}">
+</head>
+<body>
+    <header>
+        <h1>{{ page.title }}</h1>
+        {% if page.hero_image %}
+        <figure class="content-image">
+            <img
+                src="{{ page.hero_image.src }}"
+                srcset="{{ page.hero_image.srcset }}"
+                sizes="{{ page.hero_image.sizes }}"
+                width="{{ page.hero_image.width }}"
+                height="{{ page.hero_image.height }}"
+                alt="{{ page.hero_image.alt }}"
+                loading="lazy"
+                decoding="async"
+            >
+        </figure>
+        {% endif %}
+    </header>
+    {% if page.breadcrumb %}
+    <nav aria-label="Breadcrumb">
+        <ol>
+            {% for item in page.breadcrumb %}
+            <li>
+                <a href="{{ item.url }}">{{ item.title }}</a>
+            </li>
+            {% endfor %}
+        </ol>
+    </nav>
+    {% endif %}
+    <main>
+        <section>
+            <p>PageType : {{ page.page_type.name }}</p>
+            <p>URL : {{ page.url }}</p>
+        </section>
+        {% if page.content %}
+        {{ page.content | safe }}
+        {% endif %}
+        {% if page.internal_links %}
+        <aside>
+            <section>
+                <h2>상위 페이지</h2>
+                {% if page.internal_links.parent %}
+                <ul>
+                    <li>
+                        <a href="{{ page.internal_links.parent.url }}">{{ page.internal_links.parent.title }}</a>
+                    </li>
+                </ul>
+                {% endif %}
+            </section>
+            <section>
+                <h2>하위 페이지</h2>
+                {% if page.internal_links.children %}
+                <ul>
+                    {% for item in page.internal_links.children %}
+                    <li>
+                        <a href="{{ item.url }}">{{ item.title }}</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </section>
+            <section>
+                <h2>형제 페이지</h2>
+                {% if page.internal_links.siblings %}
+                <ul>
+                    {% for item in page.internal_links.siblings %}
+                    <li>
+                        <a href="{{ item.url }}">{{ item.title }}</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </section>
+            <section>
+                <h2>관련 페이지</h2>
+                {% if page.internal_links.related %}
+                <ul>
+                    {% for item in page.internal_links.related %}
+                    <li>
+                        <a href="{{ item.url }}">{{ item.title }}</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </section>
+        </aside>
+        {% endif %}
+        {% if page.seo_image %}
+        <figure class="seo-image">
+            <img
+                src="{{ page.seo_image.src }}"
+                srcset="{{ page.seo_image.srcset }}"
+                sizes="{{ page.seo_image.sizes }}"
+                width="{{ page.seo_image.width }}"
+                height="{{ page.seo_image.height }}"
+                alt="{{ page.seo_image.alt }}"
+                loading="lazy"
+                decoding="async"
+            >
+        </figure>
+        {% endif %}
+    </main>
+    <footer>
+        <p>TutorMap</p>
+    </footer>
+</body>
+</html>

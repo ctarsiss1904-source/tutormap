@@ -1,0 +1,41 @@
+html,
+body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+figure.content-image,
+figure.seo-image {
+    margin: 32px auto;
+    padding: 0;
+    width: 100%;
+    max-width: 960px;
+}
+
+figure.content-image img,
+figure.seo-image img {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+    border-radius: 12px;
+}
+
+figure.seo-image img {
+    object-fit: contain;
+}
+
+@media (max-width: 768px) {
+    figure.content-image,
+    figure.seo-image {
+        max-width: 100%;
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+    figure.content-image,
+    figure.seo-image {
+        max-width: 100%;
+    }
+}
