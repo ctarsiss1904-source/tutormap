@@ -4,14 +4,16 @@ from collections import Counter
 from html.parser import HTMLParser
 from pathlib import Path
 
+from config import ASSETS_DIR, DATA_DIR, OUTPUT_DIR, PROJECT_ROOT, TEMPLATES_DIR
 from generator.breadcrumb import BreadcrumbBuilder
 from generator.content_fallback import ContentFallbackGenerator
 from generator.html_validator import HtmlValidator
 from generator.image_builder import ImageBuilder
 from generator.internal_links import InternalLinkBuilder
-from generator.loader import DataLoader
+from generator.loader import DataLoader, Region
 from generator.keyword_definition import KeywordDefinition
 from generator.manifest import ManifestBuilder
+from generator.page import Page
 from generator.page_context import PageContext
 from generator.page_factory import PageFactory
 from generator.page_type import PageType
@@ -26,8 +28,21 @@ from generator.tree import TreeBuilder
 
 
 class Builder:
-    def __init__(self, filepath=None):
-        self.filepath = filepath
+    def __init__(
+        self,
+        filepath=None,
+        project_root=PROJECT_ROOT,
+        data_dir=DATA_DIR,
+        templates_dir=TEMPLATES_DIR,
+        assets_dir=ASSETS_DIR,
+        output_dir=OUTPUT_DIR,
+    ):
+        self.project_root = Path(project_root).resolve()
+        self.data_dir = Path(data_dir).resolve()
+        self.templates_dir = Path(templates_dir).resolve()
+        self.assets_dir = Path(assets_dir).resolve()
+        self.output_dir = Path(output_dir).resolve()
+        self.filepath = Path(filepath).resolve() if filepath else None
         self.loader = DataLoader()
         self.tree_builder = TreeBuilder()
         self.page_factory = PageFactory()
@@ -37,23 +52,40 @@ class Builder:
         self.schema_builder = SchemaBuilder()
         self.breadcrumb_builder = BreadcrumbBuilder()
         self.internal_link_builder = InternalLinkBuilder()
-        self.content_fallback_generator = ContentFallbackGenerator()
-        self.image_builder = ImageBuilder()
+        self.content_fallback_generator = ContentFallbackGenerator(report_path=self.output_dir)
+        self.image_builder = ImageBuilder(output_dir=self.output_dir)
         self.html_validator = HtmlValidator()
-        self.sitemap_builder = SitemapBuilder()
-        self.robots_builder = RobotsBuilder()
-        self.manifest_builder = ManifestBuilder()
-        self.renderer = Renderer()
+        self.sitemap_builder = SitemapBuilder(output_dir=self.output_dir)
+        self.robots_builder = RobotsBuilder(output_dir=self.output_dir)
+        self.manifest_builder = ManifestBuilder(output_dir=self.output_dir)
+        self.renderer = Renderer(
+            template_dir=self.templates_dir,
+            output_dir=self.output_dir,
+            asset_dir=self.assets_dir,
+        )
         self.data = []
         self.tree = []
         self.pages = []
         self.routes = []
         self.content_results = []
+        self.snapshot_pages = []
+        self.loaded_from_snapshot = False
 
     def load_data(self):
         print("Loading data...")
-        self.data = self.loader.load(self.filepath)
-        print(f"Loaded {len(self.data)} regions.")
+        if self.filepath:
+            self.data = self.loader.load(self.filepath)
+        else:
+            self.data = self.loader.load_directory(self.data_dir)
+
+        self.snapshot_pages = []
+        self.loaded_from_snapshot = False
+        if not self.data:
+            self.snapshot_pages = SnapshotRouteLoader(self.output_dir).load()
+            self.loaded_from_snapshot = bool(self.snapshot_pages)
+
+        self._print_build_paths()
+        self._print_data_summary()
         return self.data
 
     def build_tree(self):
@@ -63,8 +95,15 @@ class Builder:
 
     def build_site(self):
         print("Building site...")
-        pages = self._build_region_pages()
-        self.pages = self.site_builder.build(pages)
+        pages = self.snapshot_pages if self.loaded_from_snapshot else self._build_region_pages()
+        if not pages:
+            raise RuntimeError(
+                "No build data was loaded. The data directory is empty or invalid, "
+                "and no route snapshot could be recovered from output/index.html files. "
+                f"Data Directory: {self.data_dir}"
+            )
+
+        self.pages = pages if self.loaded_from_snapshot else self.site_builder.build(pages)
         return self.pages
 
     def build_routes(self):
@@ -109,6 +148,9 @@ class Builder:
 
     def clean_html_outputs(self):
         print("Cleaning HTML output...")
+        if not self.pages:
+            raise RuntimeError("Refusing to clean output because no pages were built.")
+
         output_dir = Path(self.renderer.output_dir)
         if not output_dir.exists():
             return
@@ -148,6 +190,11 @@ class Builder:
             print("Build Failed")
             raise SystemExit(1)
 
+        index_path = Path(self.renderer.output_dir) / "index.html"
+        if not index_path.exists():
+            print("Build Failed")
+            raise RuntimeError(f"Missing required output file: {index_path}")
+
         return output_path
 
     def build(self):
@@ -168,6 +215,52 @@ class Builder:
         self.build_manifest()
         self.build_report()
         print("Done.")
+
+    def _print_build_paths(self):
+        print(f"Project Root: {self.project_root}")
+        print(f"Data Directory: {self.data_dir}")
+        print(f"Templates Directory: {self.templates_dir}")
+        print(f"Assets Directory: {self.assets_dir}")
+        print(f"Output Directory: {self.output_dir}")
+
+    def _print_data_summary(self):
+        regions = len(self.data)
+        districts = len({item.district for item in self.data if getattr(item, "district", "")})
+        dongs = len({item.dong for item in self.data if getattr(item, "dong", "")})
+
+        if self.loaded_from_snapshot:
+            snapshot_pages = self._flatten_pages(self.snapshot_pages)
+            regions = len(
+                {
+                    tuple(
+                        getattr(page.region, attr, "")
+                        for attr in ("province", "city", "district", "dong")
+                    )
+                    for page in snapshot_pages
+                    if page.page_type == PageType.DONG
+                }
+            )
+            districts = len(
+                {
+                    (page.region.province, page.region.city, page.region.district)
+                    for page in snapshot_pages
+                    if page.page_type == PageType.DISTRICT and page.region.district
+                }
+            )
+            dongs = len(
+                {
+                    (page.region.province, page.region.city, page.region.district, page.region.dong)
+                    for page in snapshot_pages
+                    if page.page_type == PageType.DONG and page.region.dong
+                }
+            )
+            print("Data Source: output route snapshot")
+        else:
+            print("Data Source: structured data directory")
+
+        print(f"Loaded Regions: {regions}")
+        print(f"Loaded Districts: {districts}")
+        print(f"Loaded Dongs: {dongs}")
 
     def _build_report_data(self, pages):
         url_counts = Counter(page.url for page in pages if page.url)
@@ -477,6 +570,130 @@ class Builder:
             return False
 
         return "<" not in value and ">" not in value and "\n" not in value
+
+
+class SnapshotRouteLoader:
+    SUBJECT_MARKERS = ("영어", "수학", "국어", "과학")
+
+    def __init__(self, output_dir):
+        self.output_dir = Path(output_dir).resolve()
+
+    def load(self):
+        if not self.output_dir.exists():
+            return []
+
+        route_parts = self._route_parts()
+        if not route_parts or () not in route_parts:
+            return []
+
+        children = self._children_by_parent(route_parts)
+        page_types = {}
+        pages = {}
+
+        for parts in sorted(route_parts, key=lambda item: (len(item), item)):
+            page_type = self._page_type(parts, page_types, children)
+            page_types[parts] = page_type
+            parent = pages.get(parts[:-1])
+            region = self._region(parts, page_types)
+            title = "TutorMap" if page_type == PageType.NATION else parts[-1]
+            keyword = KeywordDefinition(
+                name=title,
+                suffix="",
+                parent=None,
+                page_type=page_type,
+            )
+            page = Page(
+                id="/".join(parts) or "TutorMap",
+                title=title,
+                url_segment="" if page_type == PageType.NATION else title,
+                region=region,
+                keyword=keyword,
+                page_type=page_type,
+                parent=parent,
+                url=None,
+                template=None,
+                meta=None,
+                schema=None,
+                is_hub=True,
+            )
+            pages[parts] = page
+            if parent is not None and page not in parent.children:
+                parent.children.append(page)
+
+        return [pages[()]]
+
+    def _route_parts(self):
+        parts = set()
+        for path in self.output_dir.rglob("index.html"):
+            try:
+                relative = path.relative_to(self.output_dir)
+            except ValueError:
+                continue
+
+            parent = relative.parent
+            if str(parent) == ".":
+                parts.add(())
+            else:
+                parts.add(tuple(parent.parts))
+
+        return parts
+
+    def _children_by_parent(self, route_parts):
+        children = {}
+        for parts in route_parts:
+            children.setdefault(parts[:-1], []).append(parts)
+        return children
+
+    def _page_type(self, parts, page_types, children):
+        depth = len(parts)
+        if depth == 0:
+            return PageType.NATION
+        if depth == 1:
+            return PageType.PROVINCE
+        if depth == 2:
+            return PageType.CITY
+
+        parent_type = page_types.get(parts[:-1])
+        if parent_type == PageType.DONG:
+            return PageType.SUBJECT
+        if parent_type == PageType.SUBJECT:
+            return PageType.GRADE
+        if parent_type == PageType.GRADE:
+            return PageType.SCHOOL
+
+        return PageType.DONG if self._looks_like_dong(parts, children) else PageType.DISTRICT
+
+    def _looks_like_dong(self, parts, children):
+        base = self._strip_suffix(parts[-1])
+        child_segments = [item[-1] for item in children.get(parts, [])]
+
+        for child_segment in child_segments:
+            child_base = self._strip_suffix(child_segment)
+            if child_base.startswith(base) and any(marker in child_base for marker in self.SUBJECT_MARKERS):
+                return True
+
+        if not child_segments:
+            return True
+
+        return base.endswith(("동", "읍", "면", "리"))
+
+    def _region(self, parts, page_types):
+        province = self._strip_suffix(parts[0]) if len(parts) > 0 else ""
+        city = self._strip_suffix(parts[1]) if len(parts) > 1 else ""
+        district = ""
+        dong = ""
+
+        for index in range(2, len(parts) + 1):
+            page_type = page_types.get(parts[:index])
+            if page_type == PageType.DISTRICT:
+                district = self._strip_suffix(parts[index - 1])
+            elif page_type == PageType.DONG:
+                dong = self._strip_suffix(parts[index - 1])
+
+        return Region(province=province, city=city, district=district, dong=dong)
+
+    def _strip_suffix(self, value):
+        return value[:-2] if value.endswith("과외") else value
 
 
 class _HTMLTagChecker(HTMLParser):

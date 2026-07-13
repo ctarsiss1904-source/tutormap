@@ -6,7 +6,7 @@ from config import BASE_URL, OUTPUT_DIR
 
 class SitemapBuilder:
     def __init__(self, output_dir=OUTPUT_DIR):
-        self.output_dir = Path(output_dir)
+        self.output_dir = Path(output_dir).resolve()
 
     def build(self, pages):
         urls = []

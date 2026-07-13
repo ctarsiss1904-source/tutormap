@@ -55,10 +55,10 @@ class ImageBuilder:
         home_hero_image_path=HOME_HERO_IMAGE_PATH,
         output_dir=OUTPUT_DIR,
     ):
-        self.image_root = Path(image_root)
-        self.hero_image_path = Path(hero_image_path)
-        self.home_hero_image_path = Path(home_hero_image_path)
-        self.output_dir = Path(output_dir)
+        self.image_root = Path(image_root).resolve()
+        self.hero_image_path = Path(hero_image_path).resolve()
+        self.home_hero_image_path = Path(home_hero_image_path).resolve()
+        self.output_dir = Path(output_dir).resolve()
         self.home_asset = None
         self.hero_asset = None
         self.seo_assets = []

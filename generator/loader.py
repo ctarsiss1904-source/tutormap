@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from pathlib import Path
+import csv
 
 from openpyxl import load_workbook
 
@@ -22,6 +24,10 @@ class DataLoader:
     def load(self, filepath):
         if not filepath:
             return []
+
+        filepath = Path(filepath).resolve()
+        if filepath.is_dir():
+            return self.load_directory(filepath)
 
         workbook = load_workbook(filepath, read_only=True, data_only=True)
         worksheet = workbook.active
@@ -53,6 +59,54 @@ class DataLoader:
 
         workbook.close()
         return regions
+
+    def load_directory(self, directory):
+        directory = Path(directory).resolve()
+        if not directory.exists():
+            return []
+
+        regions = []
+        for path in sorted(directory.rglob("*")):
+            if not path.is_file() or path.name.startswith("~$"):
+                continue
+
+            if path.suffix.lower() in {".xlsx", ".xlsm"}:
+                regions.extend(self.load(path))
+            elif path.suffix.lower() == ".csv":
+                regions.extend(self._load_csv(path))
+
+        return self._unique_regions(regions)
+
+    def _load_csv(self, filepath):
+        regions = []
+        with Path(filepath).open("r", encoding="utf-8-sig", newline="") as file:
+            reader = csv.DictReader(file)
+            if not reader.fieldnames:
+                return regions
+
+            if not all(column in reader.fieldnames for column in self.REQUIRED_COLUMNS):
+                return regions
+
+            for row in reader:
+                values = {
+                    field: self._cell_value(row.get(column))
+                    for column, field in self.REQUIRED_COLUMNS.items()
+                }
+                if any(values.values()):
+                    regions.append(Region(**values))
+
+        return regions
+
+    def _unique_regions(self, regions):
+        seen = set()
+        unique = []
+        for region in regions:
+            key = (region.province, region.city, region.district, region.dong)
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append(region)
+        return unique
 
     def _column_indexes(self, header):
         columns = {name: index for index, name in enumerate(header)}

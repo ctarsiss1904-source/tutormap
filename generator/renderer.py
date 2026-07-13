@@ -3,17 +3,17 @@ import shutil
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from config import OUTPUT_DIR
+from config import ASSETS_DIR, OUTPUT_DIR, TEMPLATES_DIR
 from generator.page_type import PageType
 
 
 class Renderer:
-    def __init__(self, template_dir="templates", output_dir=OUTPUT_DIR, asset_dir="assets"):
-        self.output_dir = Path(output_dir)
-        self.asset_dir = Path(asset_dir)
+    def __init__(self, template_dir=TEMPLATES_DIR, output_dir=OUTPUT_DIR, asset_dir=ASSETS_DIR):
+        self.output_dir = Path(output_dir).resolve()
+        self.asset_dir = Path(asset_dir).resolve()
         self._assets_copied = False
         self.environment = Environment(
-            loader=FileSystemLoader(template_dir),
+            loader=FileSystemLoader(str(Path(template_dir).resolve())),
             autoescape=select_autoescape(["html"]),
         )
 

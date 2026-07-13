@@ -6,7 +6,7 @@ from config import OUTPUT_DIR, SITE_NAME
 
 class ManifestBuilder:
     def __init__(self, output_dir=OUTPUT_DIR):
-        self.output_dir = Path(output_dir)
+        self.output_dir = Path(output_dir).resolve()
 
     def build(self):
         self.output_dir.mkdir(parents=True, exist_ok=True)

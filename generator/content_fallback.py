@@ -7,7 +7,7 @@ import re
 
 from openpyxl import Workbook, load_workbook
 
-from config import OUTPUT_DIR
+from config import OUTPUT_DIR, PROJECT_ROOT
 
 
 ERROR_VALUES = {"#ERROR!", "NULL", "NONE", "NAN", "#####"}
@@ -36,7 +36,10 @@ class ContentFallbackGenerator:
         report_path=None,
     ):
         self.content_filepath = Path(content_filepath)
-        self.report_path = Path(report_path or OUTPUT_DIR) / "content_generation_report.xlsx"
+        if not self.content_filepath.is_absolute():
+            self.content_filepath = PROJECT_ROOT / self.content_filepath
+        self.content_filepath = self.content_filepath.resolve()
+        self.report_path = Path(report_path or OUTPUT_DIR).resolve() / "content_generation_report.xlsx"
         self.results = []
         self.duplicate_content_keys = []
 
