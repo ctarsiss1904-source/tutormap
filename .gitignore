@@ -2,3 +2,6 @@ __pycache__/
 *.py[cod]
 .DS_Store
 .env
+.vercel/
+output/chrome-profile-mobile/
+output/chrome-profile-pc/
