@@ -9,8 +9,11 @@ from generator.page_type import PageType
 
 try:
     from PIL import Image
-except ImportError:
+except ImportError as error:
     Image = None
+    PIL_IMPORT_ERROR = error
+else:
+    PIL_IMPORT_ERROR = None
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -89,7 +92,10 @@ class ImageBuilder:
 
     def _validate_source_assets(self):
         if Image is None:
-            raise RuntimeError("Build Failed: Pillow is required to generate images.")
+            raise RuntimeError(
+                "Build Failed: Pillow is required to generate images. "
+                f"Original import error: {PIL_IMPORT_ERROR}"
+            )
 
         self._validate_source_image(self.home_hero_image_path, "Hero image")
         self._validate_source_image(self.hero_image_path, "Content body image")
