@@ -1,6 +1,8 @@
 import json
 import re
+import shutil
 from collections import Counter
+from datetime import datetime
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -28,6 +30,14 @@ from generator.tree import TreeBuilder
 
 
 class Builder:
+    GENERATED_OUTPUT_FILES = {
+        "sitemap.xml",
+        "robots.txt",
+        "manifest.webmanifest",
+        "build_report.json",
+        "site_audit_report.json",
+    }
+
     def __init__(
         self,
         filepath=None,
@@ -70,6 +80,8 @@ class Builder:
         self.content_results = []
         self.snapshot_pages = []
         self.loaded_from_snapshot = False
+        self.build_version = None
+        self.build_time = None
 
     def load_data(self):
         print("Loading data...")
@@ -161,6 +173,24 @@ class Builder:
         for path in output_dir.rglob("index.html"):
             path.unlink()
 
+    def clean_build_outputs(self):
+        print("Cleaning previous build outputs...")
+        output_dir = Path(self.renderer.output_dir)
+        if not output_dir.exists():
+            return
+
+        for path in output_dir.rglob("index.html"):
+            path.unlink()
+
+        for filename in self.GENERATED_OUTPUT_FILES:
+            path = output_dir / filename
+            if path.exists() and path.is_file():
+                path.unlink()
+
+        render_checks = output_dir / "render_checks"
+        if render_checks.exists() and render_checks.is_dir():
+            shutil.rmtree(render_checks)
+
     def render_pages(self):
         print("Rendering pages...")
         for route in self.routes:
@@ -201,6 +231,8 @@ class Builder:
         return output_path
 
     def build(self):
+        self._start_build_version()
+        self.clean_build_outputs()
         self.load_data()
         self.build_tree()
         self.build_site()
@@ -217,7 +249,16 @@ class Builder:
         self.build_robots()
         self.build_manifest()
         self.build_report()
+        self.verify_build_outputs()
         print("Done.")
+
+    def _start_build_version(self):
+        now = datetime.now()
+        self.build_time = now.strftime("%Y-%m-%d %H:%M:%S")
+        self.build_version = now.strftime("%Y%m%d-%H%M%S")
+        self.renderer.set_build_metadata(self.build_version, self.build_time)
+        self.image_builder.set_build_version(self.build_version)
+        print(f"Build Version: {self.build_version}")
 
     def _print_build_paths(self):
         print(f"Project Root: {self.project_root}")
@@ -282,8 +323,14 @@ class Builder:
         html_checks = self._check_html_files(html_validation_errors)
 
         return {
+            "build_version": self.build_version,
+            "build_time": self.build_time,
             "total_page_count": len(pages),
             "generated_html_count": len(existing_html_paths),
+            "generated_image_count": self._generated_image_count(),
+            "generated_webp_count": self._generated_webp_count(),
+            "generated_schema_count": self._generated_schema_count(pages),
+            "generated_sitemap_count": self._generated_sitemap_count(),
             "content_normal_count": content_summary["normal"],
             "fallback_generated_count": content_summary["generated"],
             "duplicate_content_key_count": len(
@@ -324,6 +371,8 @@ class Builder:
         )
         report = {
             "status": "aborted",
+            "build_version": self.build_version,
+            "build_time": self.build_time,
             "error": str(error).splitlines()[0],
             "total_page_count": len(self._flatten_pages(self.routes)),
             "generated_html_count": 0,
@@ -439,6 +488,127 @@ class Builder:
             return 0
 
         return len(re.findall(r"<loc>", path.read_text(encoding="utf-8")))
+
+    def _generated_image_count(self):
+        image_dir = Path(self.renderer.output_dir) / "assets" / "images"
+        if not image_dir.exists():
+            return 0
+
+        extensions = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".ico"}
+        return sum(
+            1
+            for path in image_dir.rglob("*")
+            if path.is_file() and path.suffix.lower() in extensions
+        )
+
+    def _generated_webp_count(self):
+        image_dir = Path(self.renderer.output_dir) / "assets" / "images"
+        if not image_dir.exists():
+            return 0
+
+        return sum(1 for path in image_dir.rglob("*.webp") if path.is_file())
+
+    def _generated_schema_count(self, pages):
+        return sum(len(getattr(page, "schema", []) or []) for page in pages)
+
+    def _generated_sitemap_count(self):
+        return 1 if (Path(self.renderer.output_dir) / "sitemap.xml").exists() else 0
+
+    def verify_build_outputs(self):
+        print("Verifying build outputs...")
+        checks = [
+            self._verify_index_build_version,
+            self._verify_main_hero_image,
+            self._verify_css_outputs,
+            self._verify_html_outputs,
+            self._verify_sitemap,
+            self._verify_robots,
+            self._verify_manifest,
+        ]
+
+        for check in checks:
+            check()
+
+    def _verify_index_build_version(self):
+        index_path = Path(self.renderer.output_dir) / "index.html"
+        if not index_path.exists():
+            self._fail_build(f"Missing required output file: {index_path}")
+
+        text = index_path.read_text(encoding="utf-8")
+        if f"Build Version: {self.build_version}" not in text:
+            self._fail_build(
+                f"output/index.html does not match Build Version: {self.build_version}"
+            )
+
+        if "Template: home.html" not in text:
+            self._fail_build("output/index.html is missing home template build metadata.")
+
+    def _verify_main_hero_image(self):
+        index_path = Path(self.renderer.output_dir) / "index.html"
+        text = index_path.read_text(encoding="utf-8")
+        match = re.search(
+            r'<figure\s+class=["\']hero-image["\'][\s\S]*?<img\b[^>]*?\bsrc=["\']([^"\']+)["\']',
+            text,
+            flags=re.IGNORECASE,
+        )
+        if not match:
+            self._fail_build("Main hero image markup is missing from output/index.html.")
+
+        src = match.group(1).split("?", 1)[0].split("#", 1)[0]
+        hero_path = (index_path.parent / src).resolve()
+        home_image_dir = (Path(self.renderer.output_dir) / "assets" / "images" / "home").resolve()
+
+        if not hero_path.exists() or not hero_path.is_file():
+            self._fail_build(f"Main hero image file does not exist: {hero_path}")
+
+        if not hero_path.is_relative_to(home_image_dir):
+            self._fail_build(f"Main hero image is outside home image directory: {hero_path}")
+
+    def _verify_css_outputs(self):
+        css_dir = Path(self.renderer.output_dir) / "assets" / "css"
+        for css_name in ("home.css", "site.css"):
+            path = css_dir / css_name
+            if not path.exists() or not path.is_file():
+                self._fail_build(f"Missing required CSS file: {path}")
+
+    def _verify_html_outputs(self):
+        html_paths = [path for path in Path(self.renderer.output_dir).rglob("index.html")]
+        errors = self.html_validator.validate(html_paths, self.renderer.output_dir)
+        if errors:
+            self._print_html_validation_errors([error.to_dict() for error in errors])
+            self._fail_build("HTML validation failed.")
+
+    def _verify_sitemap(self):
+        path = Path(self.renderer.output_dir) / "sitemap.xml"
+        if not path.exists() or not path.is_file():
+            self._fail_build(f"Missing sitemap: {path}")
+
+        if self._sitemap_url_count() <= 0:
+            self._fail_build("Sitemap has no URLs.")
+
+    def _verify_robots(self):
+        path = Path(self.renderer.output_dir) / "robots.txt"
+        if not path.exists() or not path.is_file():
+            self._fail_build(f"Missing robots.txt: {path}")
+
+        text = path.read_text(encoding="utf-8")
+        if "Sitemap:" not in text:
+            self._fail_build("robots.txt is missing Sitemap.")
+
+    def _verify_manifest(self):
+        path = Path(self.renderer.output_dir) / "manifest.webmanifest"
+        if not path.exists() or not path.is_file():
+            self._fail_build(f"Missing manifest: {path}")
+
+        try:
+            json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as error:
+            self._fail_build(f"Invalid manifest JSON: {error}")
+
+    def _fail_build(self, message):
+        print(message)
+        print("Build Failed")
+        raise SystemExit(1)
 
     def _build_region_pages(self):
         if not self.data:

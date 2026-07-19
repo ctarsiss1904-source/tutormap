@@ -1,6 +1,12 @@
 {
+  "build_version": "20260720-071225",
+  "build_time": "2026-07-20 07:12:25",
   "total_page_count": 2929,
   "generated_html_count": 2929,
+  "generated_image_count": 902,
+  "generated_webp_count": 678,
+  "generated_schema_count": 8787,
+  "generated_sitemap_count": 1,
   "content_normal_count": 775,
   "fallback_generated_count": 2126,
   "duplicate_content_key_count": 0,

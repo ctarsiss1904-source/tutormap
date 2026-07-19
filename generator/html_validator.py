@@ -204,7 +204,8 @@ class HtmlValidator:
         if not value or value.startswith(("http://", "https://", "data:", "#")):
             return True
 
-        return (base_dir / value).resolve().exists()
+        path_value = value.split("?", 1)[0].split("#", 1)[0]
+        return (base_dir / path_value).resolve().exists()
 
     def _attr(self, attrs, name):
         for key, value in attrs:
