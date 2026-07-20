@@ -11,14 +11,42 @@ from generator.page_type import PageType
 try:
     import PIL
 
-    print(f"[Pillow Debug] PIL.__file__: {getattr(PIL, '__file__', None)}")
-    print(f"[Pillow Debug] PIL.__path__: {list(getattr(PIL, '__path__', []))}")
+    pil_file = getattr(PIL, "__file__", None)
+    pil_path = list(getattr(PIL, "__path__", []))
+    pil_package_dir = Path(pil_file).parent if pil_file else None
+
+    print(f"[Pillow Debug] Python version: {sys.version}")
+    print(f"[Pillow Debug] sys.executable: {sys.executable}")
     print(f"[Pillow Debug] sys.path: {sys.path}")
-    from PIL import Image
+    print(f"[Pillow Debug] PIL.__file__: {pil_file}")
+    print(f"[Pillow Debug] PIL.__path__: {pil_path}")
+    print(f"[Pillow Debug] PIL package dir: {pil_package_dir}")
+    if pil_package_dir and pil_package_dir.exists():
+        package_contents = sorted(path.name for path in pil_package_dir.iterdir())
+        print(f"[Pillow Debug] package contents: {package_contents}")
+        print(f"[Pillow Debug] _imaging.so exists: {(pil_package_dir / '_imaging.so').exists()}")
+        print(f"[Pillow Debug] _imaging.pyd exists: {(pil_package_dir / '_imaging.pyd').exists()}")
+    else:
+        print("[Pillow Debug] package contents: PACKAGE DIR NOT FOUND")
+        print("[Pillow Debug] _imaging.so exists: False")
+        print("[Pillow Debug] _imaging.pyd exists: False")
+
+    try:
+        from PIL import _imaging
+        print("[Pillow Debug] _imaging import: SUCCESS")
+    except Exception as imaging_error:
+        print(f"[Pillow Debug] _imaging import: {repr(imaging_error)}")
+
+    try:
+        from PIL import Image
+        print("[Pillow Debug] Image import: SUCCESS")
+    except ImportError as image_error:
+        print(f"[Pillow Debug] Image import: {repr(image_error)}")
+        raise
 except ImportError as error:
     Image = None
     PIL_IMPORT_ERROR = error
-    print(f"[Pillow Debug] PIL import error: {error}")
+    print(f"[Pillow Debug] Original Exception: {repr(error)}")
 else:
     PIL_IMPORT_ERROR = None
 
