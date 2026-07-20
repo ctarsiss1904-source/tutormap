@@ -3,15 +3,22 @@ from hashlib import sha256
 from pathlib import Path
 import shutil
 import struct
+import sys
 
 from config import OUTPUT_DIR, SITE_NAME
 from generator.page_type import PageType
 
 try:
+    import PIL
+
+    print(f"[Pillow Debug] PIL.__file__: {getattr(PIL, '__file__', None)}")
+    print(f"[Pillow Debug] PIL.__path__: {list(getattr(PIL, '__path__', []))}")
+    print(f"[Pillow Debug] sys.path: {sys.path}")
     from PIL import Image
 except ImportError as error:
     Image = None
     PIL_IMPORT_ERROR = error
+    print(f"[Pillow Debug] PIL import error: {error}")
 else:
     PIL_IMPORT_ERROR = None
 
