@@ -1,6 +1,6 @@
 {
   "private": true,
   "scripts": {
-    "build": "python3 build.py"
+    "build": "uv run python build.py"
   }
 }
