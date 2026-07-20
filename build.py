@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 
+# Vercel currently prepends incompatible global Python packages.
+# Use the project virtual environment packages instead.
 sys.path = [path for path in sys.path if ".vercel_python_packages" not in path]
 
 from generator.builder import Builder
