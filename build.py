@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 
+sys.path = [path for path in sys.path if ".vercel_python_packages" not in path]
+
 from generator.builder import Builder
 
 
