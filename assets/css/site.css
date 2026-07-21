@@ -1,7 +1,210 @@
+:root {
+    --text: #17212f;
+    --muted: #647181;
+    --line: #d9e1ea;
+    --surface: #ffffff;
+    --soft: #f6f8fb;
+    --brand: #174276;
+    --brand-soft: #eaf2fb;
+    --content: 860px;
+    --wide: 1200px;
+}
+
 html,
 body {
     max-width: 100%;
+    margin: 0;
     overflow-x: hidden;
+    color: var(--text);
+    background: var(--surface);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+    line-height: 1.72;
+}
+
+a {
+    color: var(--brand);
+    text-underline-offset: 3px;
+}
+
+header {
+    max-width: var(--wide);
+    margin: 0 auto;
+    padding: 32px 16px 20px;
+    box-sizing: border-box;
+}
+
+header h1 {
+    max-width: var(--content);
+    margin: 0 auto 20px;
+    font-size: clamp(1.9rem, 4vw, 3rem);
+    line-height: 1.18;
+    letter-spacing: 0;
+}
+
+nav[aria-label="Breadcrumb"] {
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    background: var(--soft);
+}
+
+nav[aria-label="Breadcrumb"] ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-width: var(--wide);
+    margin: 0 auto;
+    padding: 10px 16px;
+    list-style: none;
+    box-sizing: border-box;
+}
+
+nav[aria-label="Breadcrumb"] li {
+    display: flex;
+    align-items: center;
+    min-height: 32px;
+    color: var(--muted);
+    font-size: 0.92rem;
+}
+
+nav[aria-label="Breadcrumb"] li + li::before {
+    margin: 0 6px 0 0;
+    color: #9aa6b2;
+    content: "/";
+}
+
+nav[aria-label="Breadcrumb"] a {
+    color: inherit;
+    text-decoration: none;
+}
+
+nav[aria-label="Breadcrumb"] a:hover {
+    color: var(--brand);
+    text-decoration: underline;
+}
+
+main {
+    max-width: var(--wide);
+    margin: 0 auto;
+    padding: 28px 16px 56px;
+    box-sizing: border-box;
+}
+
+main > section,
+main > article,
+main > p,
+main > ul,
+main > ol {
+    max-width: var(--content);
+    margin-right: auto;
+    margin-left: auto;
+}
+
+section,
+article {
+    box-sizing: border-box;
+}
+
+section + section,
+article + section,
+section + article {
+    margin-top: 36px;
+}
+
+h2,
+h3,
+h4 {
+    max-width: var(--content);
+    margin: 30px auto 12px;
+    line-height: 1.32;
+    letter-spacing: 0;
+}
+
+h2 {
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+    font-size: clamp(1.35rem, 3vw, 1.85rem);
+}
+
+h3 {
+    color: var(--brand);
+    font-size: 1.18rem;
+}
+
+p {
+    max-width: var(--content);
+    margin: 0 auto 14px;
+}
+
+ul,
+ol {
+    padding-left: 1.35rem;
+}
+
+li + li {
+    margin-top: 6px;
+}
+
+aside {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    max-width: var(--wide);
+    margin: 44px auto 0;
+}
+
+aside section {
+    min-width: 0;
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--soft);
+    box-sizing: border-box;
+}
+
+aside h2 {
+    margin: 0 0 12px;
+    padding: 0;
+    border: 0;
+    color: var(--brand);
+    font-size: 1rem;
+}
+
+aside ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+aside li + li {
+    margin-top: 8px;
+}
+
+aside a {
+    display: inline-block;
+    color: var(--text);
+    text-decoration: none;
+}
+
+aside a:hover {
+    color: var(--brand);
+    text-decoration: underline;
+}
+
+footer {
+    max-width: var(--wide);
+    margin: 0 auto;
+    padding: 28px 16px 44px;
+    border-top: 1px solid var(--line);
+    box-sizing: border-box;
+}
+
+footer p {
+    max-width: var(--content);
+    margin: 0 auto;
+    color: var(--muted);
 }
 
 figure.content-image,
@@ -27,6 +230,23 @@ figure.seo-image img {
 }
 
 @media (max-width: 768px) {
+    header {
+        padding-top: 24px;
+    }
+
+    main {
+        padding-top: 22px;
+        padding-bottom: 44px;
+    }
+
+    nav[aria-label="Breadcrumb"] ol {
+        gap: 4px;
+    }
+
+    aside {
+        grid-template-columns: 1fr;
+    }
+
     figure.content-image,
     figure.seo-image {
         max-width: 100%;
