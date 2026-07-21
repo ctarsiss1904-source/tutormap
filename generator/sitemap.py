@@ -82,9 +82,12 @@ class SitemapBuilder:
         if not value:
             return None
 
-        base_url = BASE_URL.rstrip("/")
-        if not base_url.startswith("https://www.tutormap.co.kr"):
-            raise RuntimeError(f"Build Failed: Invalid sitemap base URL: {base_url!r}")
+        configured_base_url = BASE_URL.rstrip("/")
+        parsed_base_url = urlsplit(configured_base_url)
+        if parsed_base_url.scheme != "https" or not parsed_base_url.netloc:
+            raise RuntimeError(
+                f"Build Failed: Invalid sitemap base URL: {configured_base_url!r}"
+            )
 
         if value.startswith("http://") or value.startswith("https://"):
             parsed = urlsplit(value)
@@ -98,16 +101,19 @@ class SitemapBuilder:
             path = f"{path}/"
 
         encoded_path = quote(path, safe="/%")
-        return urlunsplit(("https", "www.tutormap.co.kr", encoded_path, query, ""))
+        return urlunsplit(
+            (parsed_base_url.scheme, parsed_base_url.netloc, encoded_path, query, "")
+        )
 
     def _is_valid_sitemap_url(self, url):
         if not url:
             return False
 
+        parsed_base_url = urlsplit(BASE_URL.rstrip("/"))
         parsed = urlsplit(url)
         return (
-            parsed.scheme == "https"
-            and parsed.netloc == "www.tutormap.co.kr"
+            parsed.scheme == parsed_base_url.scheme
+            and parsed.netloc == parsed_base_url.netloc
             and bool(parsed.path)
             and "<" not in url
             and ">" not in url

@@ -36,11 +36,11 @@ class Renderer:
 
         self._copy_static_assets()
         template_name = "home.html" if page.page_type == PageType.NATION else "base.html"
-        css_path = "assets/css/home.css" if page.page_type == PageType.NATION else "assets/css/site.css"
+        css_path = "/assets/css/home.css" if page.page_type == PageType.NATION else "/assets/css/site.css"
         template = self.environment.get_template(template_name)
         html = template.render(
             page=page,
-            css_href=self._relative_asset(page, css_path),
+            css_href=self._public_asset(css_path),
         )
         html = self._append_build_comment(html, template_name)
         output_path = self._output_path(page)
@@ -54,10 +54,11 @@ class Renderer:
         parts = [part for part in page.url.strip("/").split("/") if part]
         return self.output_dir.joinpath(*parts, "index.html")
 
-    def _relative_asset(self, page, public_path):
-        depth = len([part for part in page.url.strip("/").split("/") if part])
-        prefix = "../" * depth
-        return self._with_build_version(f"{prefix}{public_path}")
+    def _public_asset(self, public_path):
+        if public_path.startswith("/"):
+            return self._with_build_version(public_path)
+
+        return self._with_build_version(f"/{public_path}")
 
     def _with_build_version(self, path):
         if not self.build_version:

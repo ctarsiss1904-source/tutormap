@@ -7,7 +7,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from xml.etree import ElementTree
 
-from config import ASSETS_DIR, DATA_DIR, OUTPUT_DIR, PROJECT_ROOT, TEMPLATES_DIR
+from config import ASSETS_DIR, BASE_URL, DATA_DIR, OUTPUT_DIR, PROJECT_ROOT, TEMPLATES_DIR
 from generator.breadcrumb import BreadcrumbBuilder
 from generator.content_fallback import ContentFallbackGenerator
 from generator.html_validator import HtmlValidator
@@ -590,6 +590,7 @@ class Builder:
             self._fail_build(f"Invalid sitemap XML: {error}")
 
         namespace = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+        expected_url_prefix = f"{BASE_URL.rstrip('/')}/"
         urls = root.findall("sm:url", namespace)
         if not urls:
             self._fail_build("Sitemap has no URLs.")
@@ -600,7 +601,7 @@ class Builder:
                 self._fail_build("Sitemap URL entry must contain exactly one loc element.")
 
             loc = (locs[0].text or "").strip()
-            if not loc.startswith("https://www.tutormap.co.kr/"):
+            if not loc.startswith(expected_url_prefix):
                 self._fail_build(f"Sitemap has invalid URL: {loc!r}")
 
         if len(urls) != self._sitemap_url_count():

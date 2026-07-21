@@ -60,7 +60,7 @@ class HtmlValidator:
 
             errors.extend(self._structure_errors(parser, context))
             errors.extend(self._semantic_errors(parser, context))
-            errors.extend(self._asset_errors(parser, context, path))
+            errors.extend(self._asset_errors(parser, context, path, output_dir))
             errors.extend(self._json_ld_errors(html, context))
             errors.extend(self._canonical_errors(parser, context))
 
@@ -114,24 +114,24 @@ class HtmlValidator:
 
         return errors
 
-    def _asset_errors(self, parser, context, path):
+    def _asset_errors(self, parser, context, path, output_dir):
         errors = []
         base_dir = path.parent
 
         for tag, line, column, attrs, _ancestors in parser.start_tags:
             if tag == "img":
                 src = self._attr(attrs, "src")
-                if src and not self._asset_exists(base_dir, src):
+                if src and not self._asset_exists(base_dir, output_dir, src):
                     errors.append(self._error(context, "MISSING_IMAGE", f"Image file does not exist: {src}", line, column))
 
             if tag == "link" and self._attr(attrs, "rel").lower() == "stylesheet":
                 href = self._attr(attrs, "href")
-                if href and not self._asset_exists(base_dir, href):
+                if href and not self._asset_exists(base_dir, output_dir, href):
                     errors.append(self._error(context, "MISSING_CSS", f"CSS file does not exist: {href}", line, column))
 
             if tag == "script" and self._attr(attrs, "src"):
                 src = self._attr(attrs, "src")
-                if not self._asset_exists(base_dir, src):
+                if not self._asset_exists(base_dir, output_dir, src):
                     errors.append(self._error(context, "MISSING_JS", f"JS file does not exist: {src}", line, column))
 
         return errors
@@ -200,11 +200,14 @@ class HtmlValidator:
             column=column,
         )
 
-    def _asset_exists(self, base_dir, value):
+    def _asset_exists(self, base_dir, output_dir, value):
         if not value or value.startswith(("http://", "https://", "data:", "#")):
             return True
 
         path_value = value.split("?", 1)[0].split("#", 1)[0]
+        if path_value.startswith("/"):
+            return (output_dir / path_value.lstrip("/")).resolve().exists()
+
         return (base_dir / path_value).resolve().exists()
 
     def _attr(self, attrs, name):

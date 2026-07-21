@@ -58,10 +58,6 @@
     </nav>
     {% endif %}
     <main>
-        <section>
-            <p>PageType : {{ page.page_type.name }}</p>
-            <p>URL : {{ page.url }}</p>
-        </section>
         {% if page.content %}
         {{ page.content | safe }}
         {% endif %}
