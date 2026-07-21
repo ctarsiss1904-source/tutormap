@@ -28,7 +28,7 @@
     {% endif %}
     <link rel="stylesheet" href="{{ css_href }}">
 </head>
-<body>
+<body class="content-page">
     <header>
         <h1>{{ page.title }}</h1>
         {% if page.hero_image %}
@@ -45,6 +45,17 @@
             >
         </figure>
         {% endif %}
+        {% if summary_cards %}
+        <section class="summary-cards" aria-label="학습 요약">
+            <h2 class="sr-only">학습 요약</h2>
+            {% for card in summary_cards %}
+            <article class="summary-card">
+                <h3>{{ card.title }}</h3>
+                <p>{{ card.description }}</p>
+            </article>
+            {% endfor %}
+        </section>
+        {% endif %}
     </header>
     {% if page.breadcrumb %}
     <nav aria-label="Breadcrumb">
@@ -58,12 +69,12 @@
     </nav>
     {% endif %}
     <main>
-        {% if page.content %}
-        {{ page.content | safe }}
+        {% if content_html %}
+        {{ content_html | safe }}
         {% endif %}
         {% if page.internal_links %}
-        <aside>
-            <section>
+        <aside aria-label="관련 페이지">
+            <section class="link-card-group">
                 <h2>상위 페이지</h2>
                 {% if page.internal_links.parent %}
                 <ul>
@@ -73,7 +84,7 @@
                 </ul>
                 {% endif %}
             </section>
-            <section>
+            <section class="link-card-group">
                 <h2>하위 페이지</h2>
                 {% if page.internal_links.children %}
                 <ul>
@@ -85,7 +96,7 @@
                 </ul>
                 {% endif %}
             </section>
-            <section>
+            <section class="link-card-group">
                 <h2>형제 페이지</h2>
                 {% if page.internal_links.siblings %}
                 <ul>
@@ -97,7 +108,7 @@
                 </ul>
                 {% endif %}
             </section>
-            <section>
+            <section class="link-card-group">
                 <h2>관련 페이지</h2>
                 {% if page.internal_links.related %}
                 <ul>
@@ -109,7 +120,30 @@
                 </ul>
                 {% endif %}
             </section>
+            <section class="link-card-group">
+                <h2>{{ page.recommendation_title }}</h2>
+                {% if page.internal_links.recommended %}
+                <ul>
+                    {% for item in page.internal_links.recommended %}
+                    <li>
+                        <a href="{{ item.url }}">{{ item.title }}</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </section>
         </aside>
+        {% endif %}
+        {% if faq_items %}
+        <section class="faq-list" aria-label="자주 묻는 질문">
+            <h2>자주 묻는 질문</h2>
+            {% for item in faq_items %}
+            <details class="faq-item">
+                <summary>{{ item.question }}</summary>
+                <p>{{ item.answer }}</p>
+            </details>
+            {% endfor %}
+        </section>
         {% endif %}
         {% if page.seo_image %}
         <figure class="seo-image">
