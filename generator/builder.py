@@ -5,6 +5,7 @@ from collections import Counter
 from datetime import datetime
 from html.parser import HTMLParser
 from pathlib import Path
+from xml.etree import ElementTree
 
 from config import ASSETS_DIR, DATA_DIR, OUTPUT_DIR, PROJECT_ROOT, TEMPLATES_DIR
 from generator.breadcrumb import BreadcrumbBuilder
@@ -583,8 +584,27 @@ class Builder:
         if not path.exists() or not path.is_file():
             self._fail_build(f"Missing sitemap: {path}")
 
-        if self._sitemap_url_count() <= 0:
+        try:
+            root = ElementTree.parse(path).getroot()
+        except ElementTree.ParseError as error:
+            self._fail_build(f"Invalid sitemap XML: {error}")
+
+        namespace = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+        urls = root.findall("sm:url", namespace)
+        if not urls:
             self._fail_build("Sitemap has no URLs.")
+
+        for url in urls:
+            locs = url.findall("sm:loc", namespace)
+            if len(locs) != 1:
+                self._fail_build("Sitemap URL entry must contain exactly one loc element.")
+
+            loc = (locs[0].text or "").strip()
+            if not loc.startswith("https://www.tutormap.co.kr/"):
+                self._fail_build(f"Sitemap has invalid URL: {loc!r}")
+
+        if len(urls) != self._sitemap_url_count():
+            self._fail_build("Sitemap URL count does not match loc count.")
 
     def _verify_robots(self):
         path = Path(self.renderer.output_dir) / "robots.txt"

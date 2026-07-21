@@ -5,7 +5,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 
 SITE_NAME = "TutorMap"
 
-BASE_URL = "https://tutormap.co.kr"
+BASE_URL = "https://www.tutormap.co.kr"
 
 OUTPUT_DIR = PROJECT_ROOT / "output"
 
@@ -15,4 +15,4 @@ TEMPLATES_DIR = PROJECT_ROOT / "templates"
 
 ASSETS_DIR = PROJECT_ROOT / "assets"
 
-IMAGE_URL = "https://tutormap.co.kr/assets/images/home/home-hero-1280.webp"
+IMAGE_URL = "https://www.tutormap.co.kr/assets/images/home/home-hero-1280.webp"

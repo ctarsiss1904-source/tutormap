@@ -1,5 +1,6 @@
 from pathlib import Path
-from xml.etree.ElementTree import Element, ElementTree, SubElement
+from xml.etree.ElementTree import Element, ElementTree, SubElement, indent
+from urllib.parse import quote, urlsplit, urlunsplit
 
 from config import BASE_URL, OUTPUT_DIR
 
@@ -17,7 +18,9 @@ class SitemapBuilder:
         sitemap = self._build_xml(self._unique_urls(urls))
         output_path = self.output_dir / "sitemap.xml"
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        ElementTree(sitemap).write(
+        tree = ElementTree(sitemap)
+        indent(tree, space="    ")
+        tree.write(
             output_path,
             encoding="utf-8",
             xml_declaration=True,
@@ -35,10 +38,11 @@ class SitemapBuilder:
         return [pages]
 
     def _collect_urls(self, page, urls):
-        if getattr(page, "url", None):
-            urls.append(self._absolute_url(page.url))
+        url = self._absolute_url(getattr(page, "url", None))
+        if url:
+            urls.append(url)
 
-        for child in page.children:
+        for child in getattr(page, "children", []):
             self._collect_urls(child, urls)
 
     def _build_xml(self, urls):
@@ -48,6 +52,9 @@ class SitemapBuilder:
         )
 
         for page_url in urls:
+            if not self._is_valid_sitemap_url(page_url):
+                raise RuntimeError(f"Build Failed: Invalid sitemap URL: {page_url!r}")
+
             url = SubElement(urlset, "url")
             loc = SubElement(url, "loc")
             loc.text = page_url
@@ -68,8 +75,40 @@ class SitemapBuilder:
         return unique_urls
 
     def _absolute_url(self, url):
-        base_url = BASE_URL.rstrip("/")
-        if not base_url:
-            return url
+        if not url:
+            return None
 
-        return f"{base_url}{url}"
+        value = str(url).strip()
+        if not value:
+            return None
+
+        base_url = BASE_URL.rstrip("/")
+        if not base_url.startswith("https://www.tutormap.co.kr"):
+            raise RuntimeError(f"Build Failed: Invalid sitemap base URL: {base_url!r}")
+
+        if value.startswith("http://") or value.startswith("https://"):
+            parsed = urlsplit(value)
+            path = parsed.path or "/"
+            query = parsed.query
+        else:
+            path = value if value.startswith("/") else f"/{value}"
+            query = ""
+
+        if not path.endswith("/"):
+            path = f"{path}/"
+
+        encoded_path = quote(path, safe="/%")
+        return urlunsplit(("https", "www.tutormap.co.kr", encoded_path, query, ""))
+
+    def _is_valid_sitemap_url(self, url):
+        if not url:
+            return False
+
+        parsed = urlsplit(url)
+        return (
+            parsed.scheme == "https"
+            and parsed.netloc == "www.tutormap.co.kr"
+            and bool(parsed.path)
+            and "<" not in url
+            and ">" not in url
+        )
