@@ -417,7 +417,6 @@ class Renderer:
                 }
             )
 
-        print("[HOME LINKS]", links)
         return links
 
     def _link_groups(self, page):
