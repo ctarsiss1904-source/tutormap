@@ -667,15 +667,14 @@ class Renderer:
 
         title = self._page_title(page)
         sentences = self._page_type_sentences(page)
-        links = self._guidance_links(page)
+        card_groups = self._guidance_card_groups(page)
         sentence_html = "".join(f"<p>{escape(sentence.format(title=title))}</p>" for sentence in sentences)
-        link_html = self._guidance_link_list(links)
+        card_group_html = self._guidance_card_group_list(card_groups)
         return (
             '<section class="summary-box reading-insert" aria-label="페이지 안내">'
             '<strong class="box-title">페이지 안내</strong>'
             f"{sentence_html}"
-            '<strong class="box-title">이 페이지에서 함께 살펴보면 좋은 내용</strong>'
-            f"{link_html}"
+            f"{card_group_html}"
             "</section>"
         )
 
@@ -700,6 +699,85 @@ class Renderer:
                 break
 
         return selected or rotated[:3]
+
+    def _guidance_card_groups(self, page):
+        children = self._all_child_links(page)
+        if not children:
+            return []
+
+        page_title = str(getattr(page, "title", ""))
+        base_title = self._region_title_base(page_title)
+        child_label = self._child_link_label(page)
+        featured = self._get_featured_links(children, limit=6)
+        featured_urls = {link.get("url") for link in featured}
+        remaining_children = [
+            link for link in children if link.get("url") not in featured_urls
+        ]
+        groups = []
+
+        if featured:
+            groups.append(
+                {
+                    "title": f"{base_title} 인기 {child_label}",
+                    "links": featured,
+                }
+            )
+
+        groups.append(
+            {
+                "title": f"전체 {base_title} {child_label}",
+                "links": remaining_children,
+            }
+        )
+        return groups
+
+    def _get_featured_links(self, links, limit=6):
+        return links[:limit]
+
+    def _all_child_links(self, page):
+        internal_links = getattr(page, "internal_links", {}) or {}
+        links = internal_links.get("children") or []
+        if not isinstance(links, list):
+            links = [links]
+        return self._unique_link_dicts(links)
+
+    def _child_link_label(self, page):
+        children = getattr(page, "children", []) or []
+        child_type = getattr(children[0], "page_type", None) if children else None
+        labels = {
+            PageType.PROVINCE: "지역",
+            PageType.CITY: "지역",
+            PageType.DISTRICT: "지역",
+            PageType.DONG: "지역",
+            PageType.SUBJECT: "과목",
+            PageType.GRADE: "학년",
+            PageType.SCHOOL: "학교",
+        }
+        return labels.get(child_type, "지역")
+
+    def _region_title_base(self, title):
+        return title[:-2] if title.endswith("과외") else title
+
+    def _guidance_card_group_list(self, groups):
+        if not groups:
+            return ""
+
+        return "".join(
+            f'<h3>{escape(group["title"])}</h3>'
+            f'{self._card_link_grid(group["links"])}'
+            for group in groups
+        )
+
+    def _card_link_grid(self, links):
+        items = "".join(
+            '<li>'
+            f'<a class="card link-card" href="{escape(link["url"])}">'
+            f'<span>{escape(link["title"])}</span>'
+            "</a>"
+            "</li>"
+            for link in links
+        )
+        return f'<ul class="card-grid">{items}</ul>'
 
     def _guidance_links(self, page):
         links = []
