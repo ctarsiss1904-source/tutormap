@@ -72,66 +72,34 @@
         {% if content_html %}
         {{ content_html | safe }}
         {% endif %}
-        {% if page.internal_links %}
+        {% if link_groups %}
         <aside aria-label="관련 페이지">
+            {% for group in link_groups %}
             <section class="link-card-group">
-                <h2>상위 페이지</h2>
-                {% if page.internal_links.parent %}
+                <h2>{{ group.title }}</h2>
                 <ul>
-                    <li>
-                        <a href="{{ page.internal_links.parent.url }}">{{ page.internal_links.parent.title }}</a>
-                    </li>
-                </ul>
-                {% endif %}
-            </section>
-            <section class="link-card-group">
-                <h2>하위 페이지</h2>
-                {% if page.internal_links.children %}
-                <ul>
-                    {% for item in page.internal_links.children %}
+                    {% for item in group.visible %}
                     <li>
                         <a href="{{ item.url }}">{{ item.title }}</a>
                     </li>
                     {% endfor %}
-                </ul>
-                {% endif %}
-            </section>
-            <section class="link-card-group">
-                <h2>형제 페이지</h2>
-                {% if page.internal_links.siblings %}
-                <ul>
-                    {% for item in page.internal_links.siblings %}
+                    {% if group.hidden %}
                     <li>
-                        <a href="{{ item.url }}">{{ item.title }}</a>
+                        <details>
+                            <summary>더보기</summary>
+                            <ul>
+                                {% for item in group.hidden %}
+                                <li>
+                                    <a href="{{ item.url }}">{{ item.title }}</a>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </details>
                     </li>
-                    {% endfor %}
+                    {% endif %}
                 </ul>
-                {% endif %}
             </section>
-            <section class="link-card-group">
-                <h2>관련 페이지</h2>
-                {% if page.internal_links.related %}
-                <ul>
-                    {% for item in page.internal_links.related %}
-                    <li>
-                        <a href="{{ item.url }}">{{ item.title }}</a>
-                    </li>
-                    {% endfor %}
-                </ul>
-                {% endif %}
-            </section>
-            <section class="link-card-group">
-                <h2>{{ page.recommendation_title }}</h2>
-                {% if page.internal_links.recommended %}
-                <ul>
-                    {% for item in page.internal_links.recommended %}
-                    <li>
-                        <a href="{{ item.url }}">{{ item.title }}</a>
-                    </li>
-                    {% endfor %}
-                </ul>
-                {% endif %}
-            </section>
+            {% endfor %}
         </aside>
         {% endif %}
         {% if faq_items %}

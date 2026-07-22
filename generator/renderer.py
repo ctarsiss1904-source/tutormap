@@ -349,8 +349,10 @@ class Renderer:
             page=page,
             css_href=self._public_asset(css_path),
             content_html=self._enhance_content(page),
+            home_subject_links=self._home_subject_links(page),
             summary_cards=self._summary_cards(page),
             faq_items=self._faq_items(page),
+            link_groups=self._link_groups(page),
         )
         html = self._append_build_comment(html, template_name)
         output_path = self._output_path(page)
@@ -388,6 +390,82 @@ class Renderer:
 
     def _faq_items(self, page):
         return []
+
+    def _home_subject_links(self, page):
+        if page.page_type != PageType.NATION:
+            return []
+
+        subjects = ["영어과외", "수학과외", "국어과외", "과학과외"]
+        pages = self._flatten_pages(page)
+        links = []
+
+        for subject in subjects:
+            target = next(
+                (
+                    item
+                    for item in pages
+                    if item.page_type == PageType.SUBJECT
+                    and str(item.title).endswith(subject)
+                    and getattr(item, "url", None)
+                ),
+                None,
+            )
+            links.append(
+                {
+                    "title": subject,
+                    "url": target.url if target else "",
+                }
+            )
+
+        print("[HOME LINKS]", links)
+        return links
+
+    def _link_groups(self, page):
+        internal_links = getattr(page, "internal_links", {}) or {}
+        groups = [
+            ("상위 페이지", internal_links.get("parent")),
+            ("하위 페이지", internal_links.get("children")),
+            ("형제 페이지", internal_links.get("siblings")),
+            ("관련 페이지", internal_links.get("related")),
+            (getattr(page, "recommendation_title", "추천 학습 페이지"), internal_links.get("recommended")),
+        ]
+
+        link_groups = []
+        seen = set()
+        for title, value in groups:
+            links = self._normalise_links(
+                value,
+                current_url=getattr(page, "url", None),
+                seen=seen,
+            )
+            if not links:
+                continue
+
+            link_groups.append({"title": title, "visible": links[:12], "hidden": links[12:]})
+
+        return link_groups
+
+    def _normalise_links(self, value, current_url=None, seen=None):
+        if not value:
+            return []
+
+        items = value if isinstance(value, list) else [value]
+        links = []
+        seen = seen if seen is not None else set()
+
+        for item in items:
+            if not item:
+                continue
+
+            url = item.get("url")
+            title = item.get("title")
+            if not url or not title or url == current_url or url in seen:
+                continue
+
+            seen.add(url)
+            links.append({"title": title, "url": url})
+
+        return links
 
     def _enhance_content(self, page):
         content = getattr(page, "content", "") or ""
@@ -648,6 +726,16 @@ class Renderer:
         if not items:
             return []
         return items[offset:] + items[:offset]
+
+    def _flatten_pages(self, page):
+        pages = []
+        self._walk_page(page, pages)
+        return pages
+
+    def _walk_page(self, page, pages):
+        pages.append(page)
+        for child in getattr(page, "children", []):
+            self._walk_page(child, pages)
 
     def _append_build_comment(self, html, template_name):
         if not self.build_version or not self.build_time:

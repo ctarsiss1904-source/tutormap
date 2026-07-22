@@ -89,10 +89,17 @@
             <section id="subjects" class="section">
                 <h2>과목 바로가기</h2>
                 <ul class="card-grid">
-                    <li><span class="card muted-card">영어과외</span></li>
-                    <li><span class="card muted-card">수학과외</span></li>
-                    <li><span class="card muted-card">국어과외</span></li>
-                    <li><span class="card muted-card">과학과외</span></li>
+                    {% for subject in home_subject_links %}
+                    <li>
+                        {% if subject.url %}
+                        <a class="card link-card" href="{{ subject.url }}">
+                            <span>{{ subject.title }}</span>
+                        </a>
+                        {% else %}
+                        <span class="card muted-card">{{ subject.title }}</span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
                 </ul>
             </section>
             <section class="section">
