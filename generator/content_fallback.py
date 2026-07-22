@@ -435,8 +435,19 @@ class ContentFallbackGenerator:
                 ]
             )
 
-        workbook.save(self.report_path)
-        workbook.close()
+        temp_path = self.report_path.with_name(
+            f".{self.report_path.stem}.tmp{self.report_path.suffix}"
+        )
+        try:
+            workbook.save(temp_path)
+            temp_path.replace(self.report_path)
+        except OSError as error:
+            print(
+                "Content fallback report could not replace the existing workbook. "
+                f"Continuing build with temporary report: {temp_path}. Error: {error}"
+            )
+        finally:
+            workbook.close()
 
     def _text(self, content):
         return "" if content is None else str(content)

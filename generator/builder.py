@@ -519,6 +519,8 @@ class Builder:
         print("Verifying build outputs...")
         checks = [
             self._verify_index_build_version,
+            self._verify_homepage_navigation,
+            self._verify_representative_pages,
             self._verify_main_hero_image,
             self._verify_css_outputs,
             self._verify_html_outputs,
@@ -543,6 +545,72 @@ class Builder:
 
         if "Template: home.html" not in text:
             self._fail_build("output/index.html is missing home template build metadata.")
+
+    def _verify_homepage_navigation(self):
+        index_path = Path(self.renderer.output_dir) / "index.html"
+        if not index_path.exists():
+            self._fail_build(f"Missing homepage: {index_path}")
+
+        text = index_path.read_text(encoding="utf-8")
+        link_card_count = text.count('class="card link-card"')
+        muted_card_count = text.count("muted-card")
+        subject_section_match = re.search(
+            r'<section\s+id=["\']subjects["\'][\s\S]*?</section>',
+            text,
+            flags=re.IGNORECASE,
+        )
+        if not subject_section_match:
+            self._fail_build("Homepage subject link section is missing.")
+
+        subject_section = subject_section_match.group(0)
+        subject_link_count = subject_section.count('class="card link-card"')
+        subject_muted_count = subject_section.count("muted-card")
+
+        if link_card_count < 5:
+            self._fail_build(
+                f"Homepage link-card count is too low: {link_card_count}. Expected at least 5."
+            )
+
+        if muted_card_count:
+            self._fail_build(f"Homepage contains muted-card entries: {muted_card_count}")
+
+        if subject_link_count != 4:
+            self._fail_build(
+                f"Homepage subject link count mismatch: {subject_link_count}. Expected 4."
+            )
+
+        if subject_muted_count:
+            self._fail_build(
+                f"Homepage subject section contains muted cards: {subject_muted_count}"
+            )
+
+    def _verify_representative_pages(self):
+        required_types = [
+            PageType.NATION,
+            PageType.PROVINCE,
+            PageType.CITY,
+            PageType.DONG,
+            PageType.SUBJECT,
+        ]
+        pages = self._flatten_pages(self.routes)
+
+        for page_type in required_types:
+            page = next(
+                (
+                    item
+                    for item in pages
+                    if item.page_type == page_type and getattr(item, "url", None)
+                ),
+                None,
+            )
+            if page is None:
+                self._fail_build(f"Representative page is missing for {page_type.name}.")
+
+            output_path = self.renderer._output_path(page)
+            if not output_path.exists() or not output_path.is_file():
+                self._fail_build(
+                    f"Representative page output is missing for {page_type.name}: {output_path}"
+                )
 
     def _verify_main_hero_image(self):
         index_path = Path(self.renderer.output_dir) / "index.html"

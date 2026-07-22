@@ -3,6 +3,8 @@ __pycache__/
 .DS_Store
 .env
 
+output/
+
 !assets/source/
 !assets/source/home/
 !assets/source/content/
@@ -10,5 +12,3 @@ __pycache__/
 !assets/source/**
 
 .vercel/
-output/chrome-profile-mobile/
-output/chrome-profile-pc/
