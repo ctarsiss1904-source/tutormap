@@ -884,6 +884,7 @@ class SnapshotRouteLoader:
             if parent is not None and page not in parent.children:
                 parent.children.append(page)
 
+        self._add_direct_subject_hubs(pages)
         return [pages[()]]
 
     def _route_parts(self):
@@ -929,6 +930,8 @@ class SnapshotRouteLoader:
             return PageType.NATION
         if depth == 1:
             return PageType.PROVINCE
+        if self._looks_like_subject_segment(parts[-1]):
+            return PageType.SUBJECT
         if depth == 2:
             return PageType.CITY
 
@@ -941,6 +944,56 @@ class SnapshotRouteLoader:
             return PageType.SCHOOL
 
         return PageType.DONG if self._looks_like_dong(parts, children) else PageType.DISTRICT
+
+    def _add_direct_subject_hubs(self, pages):
+        subject_suffixes = tuple(f"{marker}과외" for marker in self.SUBJECT_MARKERS)
+        region_types = {
+            PageType.PROVINCE,
+            PageType.CITY,
+            PageType.DISTRICT,
+            PageType.DONG,
+        }
+
+        for parent in list(pages.values()):
+            if parent.page_type not in region_types:
+                continue
+
+            existing_titles = {child.title for child in getattr(parent, "children", [])}
+            base_title = self._strip_suffix(parent.title)
+            for subject_suffix in subject_suffixes:
+                title = f"{base_title}{subject_suffix}"
+                if title in existing_titles:
+                    continue
+
+                page = Page(
+                    id=f"{parent.id}/{title}",
+                    title=title,
+                    url_segment=title,
+                    region=parent.region,
+                    keyword=KeywordDefinition(
+                        name=subject_suffix,
+                        suffix=subject_suffix,
+                        parent=None,
+                        page_type=PageType.SUBJECT,
+                    ),
+                    page_type=PageType.SUBJECT,
+                    parent=parent,
+                    url=None,
+                    template=None,
+                    meta=None,
+                    schema=None,
+                    is_hub=True,
+                )
+                parent.children.append(page)
+                pages[self._synthetic_subject_key(parent, title)] = page
+
+    def _synthetic_subject_key(self, parent, title):
+        parent_parts = tuple(part for part in str(parent.id).split("/") if part)
+        return (*parent_parts, title)
+
+    def _looks_like_subject_segment(self, segment):
+        base = self._strip_suffix(segment)
+        return any(base.endswith(marker) for marker in self.SUBJECT_MARKERS)
 
     def _looks_like_dong(self, parts, children):
         base = self._strip_suffix(parts[-1])

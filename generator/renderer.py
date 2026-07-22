@@ -702,7 +702,8 @@ class Renderer:
 
     def _guidance_card_groups(self, page):
         children = self._all_child_links(page)
-        if not children:
+        subject_links = self._get_subject_links(page)
+        if not children and not subject_links:
             return []
 
         page_title = str(getattr(page, "title", ""))
@@ -715,6 +716,14 @@ class Renderer:
         ]
         groups = []
 
+        if subject_links:
+            groups.append(
+                {
+                    "title": "과목 선택",
+                    "links": subject_links,
+                }
+            )
+
         if featured:
             groups.append(
                 {
@@ -723,13 +732,46 @@ class Renderer:
                 }
             )
 
-        groups.append(
-            {
-                "title": f"전체 {base_title} {child_label}",
-                "links": remaining_children,
-            }
-        )
+        if remaining_children:
+            groups.append(
+                {
+                    "title": f"전체 {base_title} {child_label}",
+                    "links": remaining_children,
+                }
+            )
         return groups
+
+    def _get_subject_links(self, page):
+        if page.page_type not in {PageType.PROVINCE, PageType.CITY, PageType.DISTRICT, PageType.DONG}:
+            return []
+
+        subject_names = [title for title, _anchor, _description in self.HOME_SUBJECT_SHORTCUTS]
+        direct_subjects = [
+            child
+            for child in getattr(page, "children", [])
+            if child.page_type == PageType.SUBJECT and getattr(child, "url", None)
+        ]
+        links = []
+        seen_urls = set()
+
+        for subject_name in subject_names:
+            target = next(
+                (
+                    item
+                    for item in direct_subjects
+                    if str(item.title).endswith(subject_name)
+                    and getattr(item, "url", None)
+                    and item.url not in seen_urls
+                ),
+                None,
+            )
+            if not target:
+                continue
+
+            seen_urls.add(target.url)
+            links.append({"title": subject_name, "url": target.url})
+
+        return links
 
     def _get_featured_links(self, links, limit=6):
         return links[:limit]
@@ -739,7 +781,13 @@ class Renderer:
         links = internal_links.get("children") or []
         if not isinstance(links, list):
             links = [links]
-        return self._unique_link_dicts(links)
+        subject_urls = {
+            child.url
+            for child in getattr(page, "children", [])
+            if child.page_type == PageType.SUBJECT and getattr(child, "url", None)
+        }
+        region_links = [link for link in links if link.get("url") not in subject_urls]
+        return self._unique_link_dicts(region_links)
 
     def _child_link_label(self, page):
         children = getattr(page, "children", []) or []
