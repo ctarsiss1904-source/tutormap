@@ -102,6 +102,26 @@
                     {% endfor %}
                 </ul>
             </section>
+            {% if home_subject_region_groups %}
+            <section id="subject-regions" class="section">
+                <h2>과목별 지역 선택</h2>
+                {% for group in home_subject_region_groups %}
+                <section id="{{ group.anchor }}" class="feature-card">
+                    <h3>{{ group.title }}</h3>
+                    <p>{{ group.description }}</p>
+                    <ul class="card-grid">
+                        {% for region in group.regions %}
+                        <li>
+                            <a class="card link-card" href="{{ region.url }}">
+                                <span>{{ region.title }}</span>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </section>
+                {% endfor %}
+            </section>
+            {% endif %}
             <section class="section">
                 <h2>TutorMap 특징</h2>
                 <ul class="feature-grid">

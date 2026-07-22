@@ -11,6 +11,29 @@ from generator.page_type import PageType
 
 
 class Renderer:
+    HOME_SUBJECT_SHORTCUTS = [
+        (
+            "영어과외",
+            "subject-english",
+            "영어 학습이 필요하다면 먼저 거주 지역을 선택한 뒤 가까운 지역 페이지에서 세부 정보를 확인하세요.",
+        ),
+        (
+            "수학과외",
+            "subject-math",
+            "수학은 학교 진도와 학생 수준의 차이가 커서 지역별 학습 환경을 함께 살펴보는 것이 좋습니다.",
+        ),
+        (
+            "국어과외",
+            "subject-korean",
+            "국어 학습은 독해, 문법, 내신 준비 방향이 달라 지역과 학교 흐름을 함께 확인하면 도움이 됩니다.",
+        ),
+        (
+            "과학과외",
+            "subject-science",
+            "과학은 학년과 단원에 따라 필요한 설명 방식이 달라 가까운 지역 페이지부터 탐색하는 편이 자연스럽습니다.",
+        ),
+    ]
+
     READING_PATTERNS = [
         ("tip", "summary", "faq"),
         ("checklist", "quote"),
@@ -350,6 +373,7 @@ class Renderer:
             css_href=self._public_asset(css_path),
             content_html=self._enhance_content(page),
             home_subject_links=self._home_subject_links(page),
+            home_subject_region_groups=self._home_subject_region_groups(page),
             summary_cards=self._summary_cards(page),
             faq_items=self._faq_items(page),
             link_groups=self._link_groups(page),
@@ -395,29 +419,41 @@ class Renderer:
         if page.page_type != PageType.NATION:
             return []
 
-        subjects = ["영어과외", "수학과외", "국어과외", "과학과외"]
-        pages = self._flatten_pages(page)
-        links = []
+        return [
+            {"title": title, "url": f"#{anchor}"}
+            for title, anchor, _description in self.HOME_SUBJECT_SHORTCUTS
+        ]
 
-        for subject in subjects:
-            target = next(
-                (
-                    item
-                    for item in pages
-                    if item.page_type == PageType.SUBJECT
-                    and str(item.title).endswith(subject)
-                    and getattr(item, "url", None)
-                ),
-                None,
-            )
-            links.append(
-                {
-                    "title": subject,
-                    "url": target.url if target else "",
-                }
-            )
+    def _home_subject_region_groups(self, page):
+        if page.page_type != PageType.NATION:
+            return []
 
-        return links
+        regions = [
+            {
+                "title": str(province.title).replace("과외", ""),
+                "url": province.url,
+            }
+            for province in getattr(page, "children", [])
+            if getattr(province, "url", None)
+        ]
+        if not regions:
+            return []
+
+        return [
+            {
+                "title": title,
+                "anchor": anchor,
+                "description": description,
+                "regions": [
+                    {
+                        "title": f"{region['title']} {title} 지역 보기",
+                        "url": region["url"],
+                    }
+                    for region in regions
+                ],
+            }
+            for title, anchor, description in self.HOME_SUBJECT_SHORTCUTS
+        ]
 
     def _link_groups(self, page):
         internal_links = getattr(page, "internal_links", {}) or {}
